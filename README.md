@@ -4,6 +4,8 @@ A copyable frontend integration for private SOL transfers, using **Vite + React 
 
 **Devnet beta:** the pinned SDK is `0.9.0-devnet`. Use devnet SOL. A compatible, available coordinator is required for real transfers.
 
+[Live example](https://invisible-sdk-react-example.pages.dev/).
+
 ## Run
 
 Node.js 24 recommended; Node.js 22.12+ supported.
@@ -79,7 +81,9 @@ For a blocked uncertain request, reconnect and inspect the saved transfer first.
 
 ## Cloudflare Pages
 
-Connect this GitHub repository in **Workers & Pages > Create application > Pages > Import an existing Git repository**:
+The live example uses a manual static upload. GitHub CI verifies the source; it does not automatically deploy the demo.
+
+For automatic deployments of your own copy, connect your GitHub repository in **Workers & Pages > Create application > Pages > Import an existing Git repository**:
 
 | Setting | Value |
 | --- | --- |
