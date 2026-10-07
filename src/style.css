@@ -1,0 +1,36 @@
+:root {
+  color-scheme: dark;
+  --background: #111315;
+  --surface: #1a1d20;
+  --text: #eef1f3;
+  --muted: #aab4bb;
+  --accent: #a8e6d5;
+  --danger: #ffb6b6;
+  --border: #414a50;
+  --radius: 0.6rem;
+  font-family: system-ui, sans-serif;
+  color: var(--text);
+  background: var(--background);
+  line-height: 1.6;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 48rem; margin: 0 auto; padding: 3rem 1rem; }
+h1 { font-size: clamp(2rem, 7vw, 3rem); line-height: 1.2; }
+h2 { font-size: 1.2rem; margin-top: 0; }
+header { margin-bottom: 2rem; }
+section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem; margin-top: 1rem; }
+label { display: grid; gap: 0.35rem; margin: 1rem 0; }
+input, select, button { font: inherit; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.65rem; max-width: 100%; }
+input, select { background: var(--background); color: var(--text); width: 100%; }
+button { background: var(--accent); color: var(--background); cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+a { color: var(--accent); }
+nav, .actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+.hint, .tag { color: var(--muted); font-size: 0.9rem; }
+.error { color: var(--danger); overflow-wrap: anywhere; }
+code, li { overflow-wrap: anywhere; }
+.copy-value { display: grid; gap: 0.6rem; margin: 1rem 0; }
+.copy-value button { justify-self: start; }
+summary { cursor: pointer; }
