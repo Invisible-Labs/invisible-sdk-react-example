@@ -19,13 +19,15 @@ npm run dev
 
 No GitHub Packages authentication or API key is needed. The SDK's `invisibleDevnet()` preset supplies the default route. To use another compatible coordinator, copy `.env.example` to `.env.local` and set `VITE_INVISIBLE_COORDINATOR_URL` to its public `wss://` URL. The route cannot override the SDK's embedded attestation policy.
 
-1. Connect. The SDK opens the WebSocket, completes Noise XX and verifies attestation.
-2. Enter an amount, destination and supported payout window. Create the transfer.
+1. Open the app. The SDK automatically opens the session, completes Noise XX and verifies attestation. No wallet connection is required.
+2. Enter an amount, select the recipient and choose a payout window in Settings. Review the full address, then create the transfer.
 3. Save the Recovery Code. Send the exact displayed devnet SOL amount from your external Solana wallet to the deposit address before expiry.
-4. Follow authenticated status updates, confirmed payouts and refund outcomes.
+4. Follow authenticated status updates, confirmed payouts and refund outcomes in Activity.
 5. If eligible, request a refund to the original deposit wallet.
 
 This example does not send the deposit transaction for you. Keep wallet funding in your application's existing wallet integration.
+
+The interface follows the compact card layout of [Uniswap](https://app.uniswap.org/swap), adapted for private SOL transfers. Recipient/review dialogs and settings/help popovers use native browser elements. No wallet provider is requested.
 
 ## Copy into your frontend
 
