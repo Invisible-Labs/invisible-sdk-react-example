@@ -117,7 +117,9 @@ dialog::backdrop { background: var(--overlay); }
 .dialog-content { padding: 20px; }
 .dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
 .address-field { display: flex; gap: 8px; align-items: center; border-radius: var(--radius-button); background: var(--surface); padding: 12px; }
+.address-field:focus-within { outline: 2px solid var(--muted); outline-offset: 3px; }
 .address-field input { min-width: 0; width: 100%; border: 0; background: none; font-size: 16px; padding: 4px 0; }
+.address-field input:focus-visible { outline: none; }
 .recipient-info { display: flex; align-items: center; gap: 12px; padding: 24px 4px; }
 .recipient-info span:nth-child(2) { flex: 1; }
 .recipient-info strong, .recipient-info small { display: block; }
