@@ -2,6 +2,12 @@
 
 Imports: `react`, `@invisible-labs/sdk`, `/user` and `/events`. The root app selects its route through the SDK's `/presets` entrypoint. Copy every module here; tests are optional in the consuming application.
 
+## Entrypoints
+
+- `index.ts`: hooks and controller, without UI or CSS imports.
+- `ui.ts`: reusable display modules. Import `styles.css` separately.
+- `usePrivateTransferController(url)`: opens one session, composes the hooks, reconciles fresh refund status and exposes guarded actions and display eligibility. Terminal or unrelated snapshots cannot authorize a refund. Create one controller per integration and pass it to its display modules.
+
 ## Hooks
 
 | Hook | Owns | Main outputs |
@@ -61,8 +67,33 @@ SDK automatic persistence does not contain the material required for arbitrary p
 
 ## Customize
 
-Keep the hooks and replace `App.tsx` with your UI. Use the SDK's amount limits and supported payout windows, and its `publicKey`/Recovery Code constructors. Keep `busy`, `creationBlocked`, fresh refund eligibility and cleanup guards when replacing buttons.
+Keep the hooks/controller and replace the display modules with your UI. Use the SDK's amount limits and supported payout windows, and its `publicKey`/Recovery Code constructors. Keep `busy`, `creationBlocked`, fresh refund eligibility and cleanup guards when replacing buttons.
 
-If you add refund UI, call `reconcileRefund(status.view)` after a fresh sync and refresh after requesting a refund, as `App.tsx` does. An acceptance receipt must never render as a completed refund.
+The controller already calls `reconcileRefund(status.view)` after a fresh sync and refreshes after requesting a refund. When composing only the individual hooks, retain that same ordering. An acceptance receipt must never render as a completed refund.
 
 Wallet connection and deposit submission belong to your existing wallet layer. Do not automatically send or repeat a wallet transaction from a polling effect.
+
+## Display modules
+
+| Export from `ui.ts` | Interface |
+| --- | --- |
+| `PrivateTransferWidget` | `controller`, controlled `tab`, `onTabChange` |
+| `TransferForm` | Amount/address state and review; supplied deadline, eligibility, phase and callbacks |
+| `PayoutWindowPicker` | Controlled SDK-supported `value` and `onChange` |
+| `TransferReview` | Validated input, dialog ref, eligibility and explicit confirmation callback |
+| `TransferActivity` / `TransferDetails` | Shared controller for saved transfers, deposit/recovery display and refunds |
+| `Dialog`, `CopyValue`, `ErrorMessage`, icons | Shared display behavior, without opening SDK sessions |
+
+Use `PrivateTransferWidget` for a complete interface, or compose these modules under a `.invisible-widget` wrapper. Every instance creates its own input/dialog/popover identifiers and radio-group name. The controller owns protocol-related eligibility; the form owns draft values; the parent/widget owns navigation and payout selection.
+
+`styles.css` uses scoped native CSS nesting. It changes no body, root or sibling styles. Customize tokens on your wrapper, for example:
+
+```css
+.invisible-widget {
+  --invisible-accent: #8b5cf6;
+  --invisible-accent-hover: #a78bfa;
+  --invisible-accent-tint: #8b5cf614;
+}
+```
+
+Reuse native dialog/popover behavior and retain the keyboard focus styles. Two controllers using the same coordinator and origin share the existing mutation-marker protection; separate widgets do not create a new financial authority.

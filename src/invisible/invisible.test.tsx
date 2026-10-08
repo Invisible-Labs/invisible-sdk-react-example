@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AttestationError, CommandError, StorageError, TransportError, closeSession, createSession, type Session } from "@invisible-labs/sdk";
 import { contractRequest, listPersistedTransfers, requestRefund, type ContractRequestResult, type PersistedTransfer, type SyncUserResponse } from "@invisible-labs/sdk/user";
@@ -8,6 +8,7 @@ import { toUiError } from "./errors";
 import { hasPendingMutation, mutationKey, runMutation } from "./mutations";
 import { useInvisibleSession } from "./useInvisibleSession";
 import { usePrivateTransfers } from "./usePrivateTransfers";
+import { usePrivateTransferController } from "./usePrivateTransferController";
 import { useTransferStatus } from "./useTransferStatus";
 import { sync } from "@invisible-labs/sdk/user";
 
@@ -261,4 +262,51 @@ describe("sync and WebSocket hints", () => {
     expect(contractRequest).not.toHaveBeenCalled();
     expect(requestRefund).not.toHaveBeenCalled();
   });
+});
+
+it("the composed controller restores records, gates commands and keeps an uncertain refund blocked after reconnect", async () => {
+  vi.mocked(createSession).mockResolvedValue(session);
+  vi.mocked(requestRefund).mockRejectedValue(new TransportError("CONNECTION_LOST", "Unknown refund"));
+  const { result } = renderHook(() => usePrivateTransferController(URL));
+  await act(async () => {
+    await result.current.createTransfer({ amountSol: "1.5", destination: DESTINATION, deadlineMs: 0 });
+    await result.current.requestRefund("");
+  });
+  expect(contractRequest).not.toHaveBeenCalled();
+  expect(requestRefund).not.toHaveBeenCalled();
+  await waitFor(() => expect(result.current.canRefund).toBe(true));
+  expect(createSession).toHaveBeenCalledTimes(1);
+  await act(async () => { await result.current.requestRefund(""); });
+  expect(requestRefund).toHaveBeenCalledExactlyOnceWith(session, { swapId: transfer.swapId, syncSecret: transfer.syncSecret, recoveryCode: transfer.recoveryCode });
+  expect(result.current.canRefund).toBe(false);
+  await act(async () => { result.current.reconnect(); });
+  await waitFor(() => expect(createSession).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(result.current.transfers.loaded).toBe(true));
+  await act(async () => { await result.current.requestRefund(""); });
+  expect(requestRefund).toHaveBeenCalledTimes(1);
+  expect(result.current.transfers.refundBlocked).toBe(true);
+});
+
+it.each(["completed", "refunded", "failed"] as const)("the headless controller refuses a refund in terminal state %s even with stale eligibility", async state => {
+  vi.mocked(createSession).mockResolvedValue(session);
+  vi.mocked(sync).mockResolvedValue({ ...view(), state });
+  const { result } = renderHook(() => usePrivateTransferController(URL));
+  await waitFor(() => expect(result.current.status.fresh).toBe(true));
+  expect(result.current.isTerminal).toBe(true);
+  expect(result.current.canRefund).toBe(false);
+  expect(result.current.canDeposit).toBe(false);
+  await act(async () => { await result.current.requestRefund(""); });
+  expect(requestRefund).not.toHaveBeenCalled();
+});
+
+it("the headless controller refuses eligibility belonging to another transfer", async () => {
+  vi.mocked(createSession).mockResolvedValue(session);
+  vi.mocked(sync).mockResolvedValue(view("other-transfer"));
+  const { result } = renderHook(() => usePrivateTransferController(URL));
+  await waitFor(() => expect(result.current.status.error).not.toBeNull());
+  expect(result.current.status.fresh).toBe(false);
+  expect(result.current.status.view).toBeNull();
+  expect(result.current.canRefund).toBe(false);
+  await act(async () => { await result.current.requestRefund(""); });
+  expect(requestRefund).not.toHaveBeenCalled();
 });
