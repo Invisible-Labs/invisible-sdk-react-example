@@ -16,7 +16,6 @@ const DEPOSIT = "So11111111111111111111111111111111111111112";
 const SWAP_ID = "test-transfer";
 const RECOVERY_CODE_LENGTH = 32;
 const DEPOSIT_WINDOW_MS = 60_000;
-const SCHEDULED_WINDOW_MS = SUPPORTED_TOTAL_DEADLINE_MS[1];
 const ENTRY_LAMPORTS = 1_500_000_001;
 const session = { attested: true } as Session;
 const record: PersistedTransfer = {
@@ -43,23 +42,26 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
-async function enterTransfer() {
+async function enterTransfer(destination = DESTINATION) {
   await waitFor(() => expect(createSession).toHaveBeenCalledTimes(1));
   fireEvent.change(screen.getByLabelText("SOL amount"), { target: { value: "1.500000001" } });
-  fireEvent.click(screen.getByRole("button", { name: "Select recipient address" }));
-  fireEvent.change(screen.getByLabelText("Recipient address"), { target: { value: DESTINATION } });
-  fireEvent.click(screen.getByRole("button", { name: "Use this address" }));
+  fireEvent.change(screen.getByLabelText("Destination address"), { target: { value: destination } });
   await waitFor(() => expect((screen.getByRole("button", { name: "Review transfer" }) as HTMLButtonElement).disabled).toBe(false));
 }
-it("opens a read-only session without a wallet and creates only after a reviewed explicit command", async () => {
+it.each(SUPPORTED_TOTAL_DEADLINE_MS)("reviews the inline address and sends the selected payout window %i only after confirmation", async windowMs => {
   let accept!: (result: ContractRequestResult) => void;
   vi.mocked(contractRequest).mockReturnValue(new Promise(resolve => { accept = resolve; }));
   render(<App />);
-  await enterTransfer();
+  expect(screen.getByLabelText("Destination address")).toBeTruthy();
+  await enterTransfer(` ${DESTINATION} `);
   expect(contractRequest).not.toHaveBeenCalled();
   expect(requestRefund).not.toHaveBeenCalled();
   expect(screen.queryByRole("button", { name: /connect wallet/i })).toBeNull();
-  fireEvent.change(screen.getByLabelText("Payout window"), { target: { value: String(SCHEDULED_WINDOW_MS) } });
+  // jsdom omits native popover opening; real mouse/keyboard behavior is checked in Brave.
+  const options = screen.getByText("Payout window", { selector: "legend" }).closest("fieldset")!;
+  const choice = within(options).getAllByRole("radio", { hidden: true }).find(input => (input as HTMLInputElement).value === String(windowMs))!;
+  fireEvent.click(choice);
+  expect((choice as HTMLInputElement).checked).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Review transfer" }));
   const review = screen.getByRole("dialog", { name: "Review transfer" });
   expect(within(review).getByText(DESTINATION)).toBeTruthy();
@@ -67,7 +69,7 @@ it("opens a read-only session without a wallet and creates only after a reviewed
   fireEvent.click(confirm);
   fireEvent.click(confirm);
   await waitFor(() => expect(contractRequest).toHaveBeenCalledTimes(1));
-  expect(contractRequest).toHaveBeenCalledWith(session, { amountLamports: ENTRY_LAMPORTS, payoutPolicy: { destinations: [{ address: DESTINATION, sharePercent: 100 }], totalDeadlineMs: SCHEDULED_WINDOW_MS } });
+  expect(contractRequest).toHaveBeenCalledWith(session, { amountLamports: ENTRY_LAMPORTS, payoutPolicy: { destinations: [{ address: DESTINATION, sharePercent: 100 }], totalDeadlineMs: windowMs } });
   vi.mocked(listPersistedTransfers).mockResolvedValue([record]);
   await act(async () => { accept({ swapId: SWAP_ID } as ContractRequestResult); });
   await waitFor(() => expect(screen.getByText(DEPOSIT)).toBeTruthy());
@@ -80,12 +82,10 @@ it("validates recipient and amount without sending a command; permits closing th
   fireEvent.keyDown(tabs, { key: "ArrowRight" });
   expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Activity" }));
   fireEvent.keyDown(tabs, { key: "Home" });
-  fireEvent.click(screen.getByRole("button", { name: "Select recipient address" }));
-  fireEvent.change(screen.getByLabelText("Recipient address"), { target: { value: "invalid-address" } });
-  fireEvent.click(screen.getByRole("button", { name: "Use this address" }));
-  expect(screen.getByRole("dialog", { name: "Select recipient" })).toBeTruthy();
+  await enterTransfer("invalid-address");
+  fireEvent.click(screen.getByRole("button", { name: "Review transfer" }));
+  expect(screen.queryByRole("dialog", { name: "Review transfer" })).toBeNull();
   expect(screen.getByRole("alert").textContent).not.toContain("[object Object]");
-  fireEvent.click(screen.getByRole("button", { name: "Close recipient" }));
   await enterTransfer();
   fireEvent.change(screen.getByLabelText("SOL amount"), { target: { value: "1.499999999" } });
   fireEvent.click(screen.getByRole("button", { name: "Review transfer" }));

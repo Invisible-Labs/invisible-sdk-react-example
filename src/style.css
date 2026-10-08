@@ -33,7 +33,7 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
-button, input, select { font: inherit; color: inherit; }
+button, input { font: inherit; color: inherit; }
 button, a, summary { -webkit-tap-highlight-color: transparent; }
 button { border: 0; cursor: pointer; background: none; }
 button:disabled { cursor: not-allowed; }
@@ -72,22 +72,17 @@ h2 { font-size: 18px; font-weight: 500; }
 .icon-button:disabled { opacity: .4; }
 .amount-card, .recipient-card { height: 136px; padding: 16px; border-radius: var(--radius-card); }
 .amount-card { border: 1px solid var(--border); }
-.recipient-card { background: var(--surface); margin-top: 4px; height: 132px; }
-.amount-card > label, .recipient-card > .muted { font-size: 16px; }
+.recipient-card { background: var(--surface); margin-top: 4px; height: auto; }
+.amount-card > label, .recipient-card > label { font-size: 16px; }
 .amount-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 8px; height: 44px; }
-.amount-row input, .receive-amount { font-size: 36px; font-weight: 400; line-height: 1.2; min-width: 0; }
+.amount-row input { font-size: 36px; font-weight: 400; line-height: 1.2; min-width: 0; }
 .amount-row input { background: none; border: 0; padding: 0; width: 100%; }
-.amount-row input::placeholder, .receive-amount { color: var(--quiet); opacity: 1; }
-.receive-amount { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.receive-amount.entered { color: var(--text); }
+.amount-row input::placeholder { color: var(--quiet); opacity: 1; }
 .card-caption { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--muted); }
-.token-pill, .recipient-pill { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0; padding: 4px 10px 4px 4px; height: 38px; border-radius: var(--radius-pill); font-weight: 600; }
+.token-pill { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0; padding: 4px 10px 4px 4px; height: 38px; border-radius: var(--radius-pill); font-weight: 600; }
 .token-pill { border: 1px solid var(--border); }
 .sol-icon { display: inline-flex; width: 28px; height: 28px; border-radius: var(--radius-pill); align-items: center; justify-content: center; background: var(--background); flex-shrink: 0; }
 .sol-icon svg { width: 21px; height: 21px; fill: var(--solana); }
-.recipient-pill { background: var(--accent); padding: 8px 12px; font-size: 16px; }
-.recipient-pill:hover { background: var(--accent-hover); }
-.recipient-pill.selected { background: var(--surface-hover); border: 1px solid var(--border); font-size: 14px; }
 .flow-arrow { width: 40px; height: 40px; border: 4px solid var(--background); border-radius: var(--radius-dialog); background: var(--surface); display: flex; align-items: center; justify-content: center; margin: -18px auto -22px; position: relative; z-index: 1; color: var(--text); }
 .flow-arrow svg { width: 24px; height: 24px; }
 .primary-action, .secondary-action { width: 100%; padding: 16px 20px; border-radius: var(--radius-button); font-size: 18px; font-weight: 600; margin-top: 4px; background: var(--accent); min-height: 55px; }
@@ -110,22 +105,24 @@ h2 { font-size: 18px; font-weight: 500; }
 .settings-popover { width: min(var(--popover-width), calc(100vw - 24px)); padding: 16px; margin: 0; inset: 184px auto auto max(12px, calc(50% + var(--card-width) / 2 - var(--popover-width))); }
 @supports (position-anchor: --settings) { .settings-popover { position-anchor: --settings; inset: auto; top: anchor(bottom); right: anchor(right); margin-top: 8px; } }
 .settings-popover h2 { margin-bottom: 16px; }
+.payout-options { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.payout-options legend { padding: 0; margin-bottom: 12px; font-size: 14px; }
+.payout-options label { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-dialog); font-size: 14px; cursor: pointer; }
+.payout-options label:hover { background: var(--surface-hover); }
+.payout-options input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.payout-options label:has(:checked) { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
+.payout-options label:has(:focus-visible) { outline: 2px solid var(--muted); outline-offset: 3px; }
+.payout-options label > svg { opacity: 0; flex-shrink: 0; }
+.payout-options label:has(:checked) > svg { opacity: 1; }
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0; font-size: 14px; }
-select { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 6px 8px; font-size: 14px; max-width: 160px; }
 dialog { width: min(var(--dialog-width), calc(100% - 24px)); max-height: calc(100dvh - 32px); overflow: auto; }
 dialog::backdrop { background: var(--overlay); }
 .dialog-content { padding: 20px; }
 .dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
-.address-field { display: flex; gap: 8px; align-items: center; border-radius: var(--radius-button); background: var(--surface); padding: 12px; }
+.address-field { margin: 12px 0; display: flex; gap: 8px; align-items: center; border-radius: var(--radius-button); background: var(--background); padding: 12px; }
 .address-field:focus-within { outline: 2px solid var(--muted); outline-offset: 3px; }
 .address-field input { min-width: 0; width: 100%; border: 0; background: none; font-size: 16px; padding: 4px 0; }
 .address-field input:focus-visible { outline: none; }
-.recipient-info { display: flex; align-items: center; gap: 12px; padding: 24px 4px; }
-.recipient-info span:nth-child(2) { flex: 1; }
-.recipient-info strong, .recipient-info small { display: block; }
-.recipient-info small { color: var(--muted); }
-.recipient-info > svg { color: var(--accent); }
-.recipient-dialog .primary-action { margin-top: 20px; }
 .review-amount { display: flex; align-items: center; gap: 12px; font-size: 32px; margin-bottom: 8px; }
 .review-amount strong { font-weight: 500; }
 .review-dialog .primary-action { margin-top: 20px; }
@@ -177,9 +174,7 @@ dialog::backdrop { background: var(--overlay); }
   .tabs { gap: 8px; }
   .tabs button { font-size: 14px; }
   .settings-popover { top: 140px; right: 12px; left: auto; }
-  .amount-row input, .receive-amount { font-size: 34px; }
-  .recipient-pill { font-size: 14px; padding: 8px 10px; gap: 4px; }
-  .recipient-pill.selected { font-size: 12px; }
+  .amount-row input { font-size: 34px; }
   .card-caption { font-size: 12px; }
   .primary-action { font-size: 16px; }
 }

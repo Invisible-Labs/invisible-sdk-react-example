@@ -62,12 +62,8 @@ export default function App() {
   const [tab, setTab] = useState<"transfer" | "activity">("transfer");
   const [amountSol, setAmountSol] = useState("");
   const [destination, setDestination] = useState("");
-  const [recipientInput, setRecipientInput] = useState("");
   const [deadlineMs, setDeadlineMs] = useState(INSTANT_PAYOUT_WINDOW_MS);
   const [formError, setFormError] = useState<InvisibleUiError | null>(null);
-  const [recipientError, setRecipientError] = useState<InvisibleUiError | null>(null);
-  const recipientDialog = useRef<HTMLDialogElement>(null);
-  const recipientField = useRef<HTMLInputElement>(null);
   const reviewDialog = useRef<HTMLDialogElement>(null);
   const transfer = transfers.selected;
   const snapshot = status.view?.actor_sync?.snapshot;
@@ -90,21 +86,14 @@ export default function App() {
     }
   }, [status.fresh, status.view, transfers.reconcileRefund, transfers.reload, connection.fail]);
 
-  function chooseRecipient(event: FormEvent) {
-    event.preventDefault();
-    try {
-      publicKey(recipientInput.trim());
-      setDestination(recipientInput.trim());
-      setRecipientError(null);
-      recipientDialog.current?.close();
-    } catch (error) { setRecipientError(toUiError(error)); }
-  }
   function review(event: FormEvent) {
     event.preventDefault();
     if (!canCreate) return;
     try {
       parseSolAmount(amountSol);
-      publicKey(destination);
+      const address = destination.trim();
+      publicKey(address);
+      setDestination(address);
       setFormError(null);
       reviewDialog.current?.showModal();
     } catch (error) { setFormError(toUiError(error)); }
@@ -147,7 +136,7 @@ export default function App() {
       </div>
       <div id={SETTINGS_ID} popover="auto" className="settings-popover">
         <h2>Transfer settings</h2>
-        <label className="settings-row">Payout window<select value={deadlineMs} onChange={event => setDeadlineMs(Number(event.target.value))}>{SUPPORTED_TOTAL_DEADLINE_MS.map(windowMs => <option key={windowMs} value={windowMs}>{windowLabel(windowMs)}</option>)}</select></label>
+        <fieldset className="payout-options"><legend>Payout window</legend>{SUPPORTED_TOTAL_DEADLINE_MS.map(windowMs => <label key={windowMs}><input type="radio" name="payout-window" value={windowMs} checked={deadlineMs === windowMs} onChange={() => setDeadlineMs(windowMs)} /><span>{windowLabel(windowMs)}</span><Icon name="check" /></label>)}</fieldset>
         <div className="settings-row"><span>Network</span><span className="muted">Solana devnet</span></div>
         <p className="hint">Scheduled payouts follow the accepted coordinator policy. Only devnet SOL is supported.</p>
       </div>
@@ -161,11 +150,11 @@ export default function App() {
           </div>
           <div className="flow-arrow" aria-hidden="true"><Icon name="arrow" /></div>
           <div className="recipient-card">
-            <span className="muted">To</span>
-            <div className="amount-row"><span className={`receive-amount ${amountSol ? "entered" : ""}`}>{amountSol || "0"}</span><button className={`recipient-pill ${destination ? "selected" : ""}`} type="button" aria-haspopup="dialog" aria-label={destination ? "Change recipient address" : "Select recipient address"} onClick={() => { setRecipientInput(destination); setRecipientError(null); recipientDialog.current?.showModal(); recipientField.current?.focus(); }}>{destination ? shortAddress(destination) : "Select recipient"}<Icon name="chevron" /></button></div>
-            <div className="card-caption"><span>SOL · Before fees</span><span>{windowLabel(deadlineMs)}</span></div>
+            <label className="muted" htmlFor="destination">Destination address</label>
+            <div className="address-field"><SolIcon /><input id="destination" required autoComplete="off" spellCheck={false} placeholder="Paste a Solana address" value={destination} onChange={event => setDestination(event.target.value)} /></div>
+            <div className="card-caption"><span>Solana devnet</span><span>{windowLabel(deadlineMs)}</span></div>
           </div>
-          <button className="primary-action" disabled={!canCreate || !amountSol.trim() || !destination}>{transfers.busy ? "Creating transfer..." : connection.phase === "connecting" ? "Connecting..." : !ready ? "Connection unavailable" : !amountSol.trim() ? "Enter an amount" : !destination ? "Select recipient" : "Review transfer"}</button>
+          <button className="primary-action" disabled={!canCreate || !amountSol.trim() || !destination.trim()}>{transfers.busy ? "Creating transfer..." : connection.phase === "connecting" ? "Connecting..." : !ready ? "Connection unavailable" : !amountSol.trim() ? "Enter an amount" : !destination.trim() ? "Enter a destination address" : "Review transfer"}</button>
           {connection.phase === "error" && <button className="text-button retry-button" type="button" disabled={transfers.busy} onClick={reconnect}>Retry connection</button>}
         </form>
         <p className="form-footnote">No wallet connection needed. Fund the deposit from your own wallet.</p>
@@ -197,10 +186,6 @@ export default function App() {
       <ErrorMessage error={connection.error} /><ErrorMessage error={transfers.error} /><ErrorMessage error={formError} />
     </main>
 
-    <dialog ref={recipientDialog} aria-labelledby="recipient-title" className="recipient-dialog" onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close(); }}><div className="dialog-content">
-      <div className="dialog-heading"><h2 id="recipient-title">Select recipient</h2><button className="icon-button" aria-label="Close recipient" onClick={() => recipientDialog.current?.close()}><Icon name="close" /></button></div>
-      <form onSubmit={chooseRecipient}><label className="address-field"><SolIcon /><input aria-label="Recipient address" ref={recipientField} required autoComplete="off" spellCheck={false} placeholder="Paste a Solana address" value={recipientInput} onChange={event => setRecipientInput(event.target.value)} /></label><div className="recipient-info"><SolIcon /><span><strong>Solana</strong><small>SOL · Devnet</small></span><Icon name="check" /></div><p className="hint">Only SOL transfers are supported. Check the full recipient address before continuing.</p><ErrorMessage error={recipientError} /><button className="primary-action" disabled={!recipientInput.trim()}>Use this address</button></form>
-    </div></dialog>
     <dialog ref={reviewDialog} aria-labelledby="review-title" className="review-dialog"><div className="dialog-content">
       <div className="dialog-heading"><h2 id="review-title">Review transfer</h2><button className="icon-button" aria-label="Close review" onClick={() => reviewDialog.current?.close()}><Icon name="close" /></button></div>
       <div className="review-amount"><SolIcon /><strong>{amountSol || "0"} SOL</strong></div><p className="muted">Private transfer on Solana devnet</p>
