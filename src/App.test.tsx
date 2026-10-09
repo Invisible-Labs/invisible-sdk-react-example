@@ -1,8 +1,11 @@
+import { createRef, useState, type FormEvent } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createSession, type Session, TransportError } from "@invisible-labs/sdk";
 import { contractRequest, listPersistedTransfers, requestRefund, sync, type ContractRequestResult, type PersistedTransfer, SUPPORTED_TOTAL_DEADLINE_MS } from "@invisible-labs/sdk/user";
 import App from "./App";
+import { usePrivateTransferController } from "./invisible";
+import { PrivateTransferWidget, TransferReview, type TransferTab } from "./invisible/ui";
 
 vi.mock("@invisible-labs/sdk", async importOriginal => {
   const actual = await importOriginal<typeof import("@invisible-labs/sdk")>();
@@ -122,4 +125,42 @@ it("never displays expired or terminal deposit instructions or terminal bearer m
   expect(screen.queryByText(DEPOSIT)).toBeNull();
   expect(screen.queryByText("Recovery Code")).toBeNull();
   expect(screen.queryByRole("button", { name: "Request refund" })).toBeNull();
+});
+
+it("two copied widgets keep independent inputs, payout choices and accessible identifiers", async () => {
+  const COORDINATOR_URL = "wss://coordinator.example/ws-noise";
+  function Integration({ name }: { name: string }) {
+    const controller = usePrivateTransferController(COORDINATOR_URL);
+    const [tab, setTab] = useState<TransferTab>("transfer");
+    return <section aria-label={name}><PrivateTransferWidget controller={controller} tab={tab} onTabChange={setTab} /></section>;
+  }
+  render(<><Integration name="First widget" /><Integration name="Second widget" /></>);
+  await waitFor(() => expect(createSession).toHaveBeenCalledTimes(2));
+  const first = screen.getByRole("region", { name: "First widget" });
+  const second = screen.getByRole("region", { name: "Second widget" });
+  fireEvent.change(within(first).getByLabelText("Destination address"), { target: { value: DESTINATION } });
+  expect((within(second).getByLabelText("Destination address") as HTMLInputElement).value).toBe("");
+  const firstChoices = within(first).getAllByRole("radio", { hidden: true });
+  const secondChoices = within(second).getAllByRole("radio", { hidden: true });
+  fireEvent.click(firstChoices[1]);
+  expect((firstChoices[1] as HTMLInputElement).checked).toBe(true);
+  expect((secondChoices[0] as HTMLInputElement).checked).toBe(true);
+  const ids = [...document.querySelectorAll("[id]")].map(node => node.id);
+  expect(new Set(ids).size).toBe(ids.length);
+  expect(within(first).getByRole("button", { name: "Transfer settings" }).getAttribute("popovertarget"))
+    .not.toBe(within(second).getByRole("button", { name: "Transfer settings" }).getAttribute("popovertarget"));
+  expect(contractRequest).not.toHaveBeenCalled();
+  expect(requestRefund).not.toHaveBeenCalled();
+});
+
+it("the reusable review confirms without submitting its host form", async () => {
+  const ref = createRef<HTMLDialogElement>();
+  const onConfirm = vi.fn(async () => {});
+  const onSubmit = vi.fn((event: FormEvent) => event.preventDefault());
+  render(<form onSubmit={onSubmit}><TransferReview ref={ref} canCreate={true} input={{ amountSol: "1.5", destination: DESTINATION, deadlineMs: 0 }} onConfirm={onConfirm} /></form>);
+  act(() => ref.current!.showModal());
+  fireEvent.click(screen.getByRole("button", { name: "Create private transfer" }));
+  expect(onConfirm).toHaveBeenCalledTimes(1);
+  expect(onSubmit).not.toHaveBeenCalled();
+  expect(contractRequest).not.toHaveBeenCalled();
 });

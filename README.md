@@ -40,36 +40,29 @@ npm install @invisible-labs/sdk@0.9.0-devnet
 The folder depends only on React and the public SDK. It imports no app components, routing, design system, Vite environment variables or private workspace packages.
 
 ```tsx
+import { useState } from "react";
 import { invisibleDevnet } from "@invisible-labs/sdk/presets";
-import { useInvisibleSession, usePrivateTransfers, useTransferStatus } from "./invisible";
-
-const coordinatorUrl = invisibleDevnet();
+import { usePrivateTransferController } from "./invisible";
+import { PrivateTransferWidget, type TransferTab } from "./invisible/ui";
+import "./invisible/styles.css";
 
 function PrivateTransfer() {
-  const connection = useInvisibleSession(coordinatorUrl);
-  const transfers = usePrivateTransfers(connection.session, coordinatorUrl);
-  const status = useTransferStatus(connection.session, transfers.selected, connection.fail);
-
-  return <>
-    <button onClick={() => void connection.connect()}>Connect</button>
-    <button disabled={!connection.session || !transfers.loaded || transfers.busy || transfers.creationBlocked}
-      onClick={() => void transfers.createTransfer({
-        amountSol: "1.5",
-        destination: "YOUR_SOLANA_DESTINATION_ADDRESS",
-        deadlineMs: 0,
-      })}>Create transfer</button>
-    <p>{status.view?.state}</p>
-    <p role="alert">{connection.error?.message ?? transfers.error?.message ?? status.error?.message}</p>
-  </>;
+  const controller = usePrivateTransferController(invisibleDevnet());
+  const [tab, setTab] = useState<TransferTab>("transfer");
+  return <PrivateTransferWidget controller={controller} tab={tab} onTabChange={setTab} />;
 }
 ```
 
-See [`src/App.tsx`](src/App.tsx) for the complete deposit, saved-transfer, Recovery Code and refund UI. See the [folder guide](src/invisible/README.md) for lifecycle and integration details.
+The controller opens one attested session and coordinates the existing hooks. The widget provides address input, review, deposit instructions, activity and refunds. It never opens another session. The parent controls the tab so navigation can be shared with its own header.
+
+For your own design, import the controller or individual hooks from `./invisible`; import only the display modules you need from `./invisible/ui`. UI styles are scoped to `.invisible-widget`. Wrap standalone display modules in that class, and customize `--invisible-*` variables on the wrapper. Do not copy the demo's global `src/style.css`.
+
+See the [folder guide](src/invisible/README.md) for module interfaces, lifecycle and safety rules. [`src/App.tsx`](src/App.tsx) only supplies the demo route, header and navigation.
 
 ## Ownership and safety
 
 - **SDK:** WebSocket transport, Noise, attestation, DKG/delegation, policy validation, recovery codes, typed errors and local transfer records.
-- **Hooks:** React cleanup, command concurrency, selected transfer, polling, refresh subscriptions and readable errors.
+- **Hooks/controller:** React cleanup, command concurrency, selected transfer, polling, refresh subscriptions, deposit/refund guards and readable errors.
 - **Application:** form/UI, external wallet deposit and your storage/privacy policy.
 - `SyncRequired` messages carry refresh hints. Only `sync` provides lifecycle truth.
 - Polling never overlaps; retries apply to reads. A failed attestation stops the session. Disconnect closes it; reconnect creates and attests a fresh one. Select a saved transfer to resume reads.
